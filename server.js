@@ -8,7 +8,7 @@
 *
 * Name: Tabir Ahmed Student ID: 135460236 Date: 2024-04-12
 *
-* Published URL:
+* Published URL:https://worrisome-sweatshirt-fish.cyclic.app
 *
 ********************************************************************************/
 const unCountriesData = require("./modules/unCountries");
@@ -19,11 +19,9 @@ const express = require("express");
 const path = require("path");
 const app = express();
 
-// Server Configuration
 app.set('view engine', 'ejs');
 app.use(express.urlencoded({ extended: true }));
 
-// Checks if the user is logged in and redirects to the login route if not
 function ensureLogin(req, res, next) {
     if (!req.session || !req.session.user) {
         res.redirect('/login');
@@ -32,21 +30,18 @@ function ensureLogin(req, res, next) {
     }
 }
 
-// Client session configuration
 app.use(clientSessions({
     cookieName: 'session',
     secret: 'yourSecretKeyHere',
-    duration: 24 * 60 * 60 * 1000, // 24 hours
-    activeDuration: 1000 * 60 * 5 // 5 minutes
+    duration: 24 * 60 * 60 * 1000,
+    activeDuration: 1000 * 60 * 5
 }));
 
-// Middleware to make the session available in all templates
 app.use((req, res, next) => {
     res.locals.session = req.session;
     next();
 });
 
-// Server and services initialization
 unCountriesData.initialize()
     .then(authData.initialize)
     .then(() => {
@@ -57,10 +52,8 @@ unCountriesData.initialize()
         console.log(`unable to start server: ${error}`);
     });
 
-// Configuration of static directories
 app.use(express.static('public'));
 
-// Tests
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -70,20 +63,14 @@ app.use((req, res, next) => {
     }
     next();
 });
-// Tests
 
-// Routes
-// Home page
 app.get("/", (req, res) => {
     res.render("home");
 });
 
-// About page
 app.get("/about", (req, res) => {
     res.render("about");
 });
-
-// List of UN countries by region
 app.get("/un/countries", (req, res) => {
     const { region } = req.query;
     if (region) {
@@ -97,7 +84,6 @@ app.get("/un/countries", (req, res) => {
     }
 });
 
-// Details of a specific country
 app.get("/un/countries/:countryCode", (req, res) => {
     const countryCode = req.params.countryCode;
     unCountriesData.getCountryByCode(countryCode)
@@ -110,7 +96,6 @@ app.get("/un/countries/:countryCode", (req, res) => {
         .catch(error => res.status(404).render("404", { message: "An error occurred while trying to find the country" }));
 });
 
-// Add country
 app.get("/un/addCountry", ensureLogin, (req, res) => {
     unCountriesData.getAllRegions()
         .then(regions => {
@@ -121,13 +106,10 @@ app.get("/un/addCountry", ensureLogin, (req, res) => {
         });
 });
 
-// Process country addition
 app.post("/un/addCountry", (req, res) => {
-    // Encrypt the password before saving it to the database
     bcrypt.hash(req.body.password, 10)
         .then(hash => {
             req.body.password = hash;
-            // Add country to the database
             unCountriesData.addCountry(req.body)
                 .then(() => {
                     res.redirect("/un/countries");
@@ -141,7 +123,6 @@ app.post("/un/addCountry", (req, res) => {
         });
 });
 
-// Edit country
 app.get("/un/editCountry/:code", (req, res) => {
     if (!req.session.user) {
         res.redirect('/login');
@@ -168,7 +149,6 @@ app.get("/un/editCountry/:code", (req, res) => {
     }
 });
 
-// Process country edit
 app.post("/un/editCountry", (req, res) => {
     let countryCode = req.body.a2code;
     let countryData = req.body;
@@ -182,7 +162,6 @@ app.post("/un/editCountry", (req, res) => {
         });
 });
 
-// Delete country
 app.get("/un/deleteCountry/:code", ensureLogin, (req, res) => {
     let countryCode = req.params.code;
 
@@ -195,44 +174,35 @@ app.get("/un/deleteCountry/:code", ensureLogin, (req, res) => {
         });
 });
 
-// Route to log out the user
 app.get("/logout", ensureLogin, (req, res) => {
     req.session.reset();
     res.redirect('/');
 });
 
-// Function to format the date
 function formatDate(date) {
     let options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
     let formattedDate = date.toLocaleDateString('en-US', options);
 
-    // Remove commas
     formattedDate = formattedDate.replace(/,/g, '');
 
-    // Add time zone
     let timeZone = "GMT" + (date.getTimezoneOffset() > 0 ? "-" : "+") + Math.abs(date.getTimezoneOffset() / 60).toString().padStart(2, '0') + "00";
 
     return `${formattedDate} ${timeZone} (Coordinated Universal Time)`;
 }
-
-// Route to render the user history page
 app.get("/userHistory", ensureLogin, (req, res) => {
     res.render("userHistory", { formatDate: formatDate });
 });
 
-// Route renders the dashboard page if the user is logged in
 app.get('/dashboard', ensureLogin, (req, res) => {
     res.render('dashboard', { user: req.session.user });
 });
 
-// Route to render the login page
 app.get('/login', function(req, res) {
     let errorMessage = req.session.error;
-    req.session.error = null; // clear the error message after storing it
+    req.session.error = null;
     res.render('login', { errorMessage: errorMessage });
 });
 
-// Route to process user login
 app.post("/login", (req, res) => {
     req.body.userAgent = req.get('User-Agent');
     authData.checkUser(req.body)
@@ -250,23 +220,20 @@ app.post("/login", (req, res) => {
         });
 });
 
-// Route to render the register page
 app.get("/register", function(req, res) {
     res.render('register', { successMessage: '', errorMessage: '' });
 });
 
-// Route to process user registration
 app.post("/register", (req, res) => {
     authData.registerUser(req.body)
         .then(user => {
-            res.redirect("/login"); // Redirect to login page after successful registration
+            res.redirect("/login");
         })
         .catch(err => {
             res.render("register", { errorMessage: err, userName: req.body.userName, successMessage: '' });
         });
 });
 
-// 404 Page
 app.use((req, res) => {
     res.status(404).render("404", { message: "I'm sorry, we're unable to find what you're looking for" });
 });

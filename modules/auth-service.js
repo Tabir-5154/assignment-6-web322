@@ -8,23 +8,20 @@
 *
 * Name: Tabir Ahmed Student ID: 135460236 Date: 2024-04-12
 *
-* Published URL:
+* Published URL:https://worrisome-sweatshirt-fish.cyclic.app
 *
 ********************************************************************************/
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 require('dotenv').config();
 
-// Define MongoDB connection URI
 const MONGODB_URI = process.env.MONGODB_URI;
 
-// Check if MongoDB URI is defined
 if (!MONGODB_URI) {
     console.error('MongoDB URI is not defined in the environment variables.');
-    process.exit(1); // Exit the application
+    process.exit(1);
 }
 
-// Defining connection to MongoDB
 mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
@@ -32,10 +29,9 @@ mongoose.connect(MONGODB_URI, {
     console.log('MongoDB connected successfully');
 }).catch(err => {
     console.error('MongoDB connection error:', err);
-    process.exit(1); // Exit the application
+    process.exit(1);
 });
 
-// Creating user schema
 const Schema = mongoose.Schema;
 const userSchema = new Schema({
     userName: { type: String, unique: true },
@@ -47,16 +43,14 @@ const userSchema = new Schema({
     }]
 });
 
-// Creating user model
 let User = mongoose.model('User', userSchema);
 
-// Function to initialize MongoDB connection and define User model
 let initialize = () => {
     return new Promise(function (resolve, reject) {
         let db = mongoose.createConnection(MONGODB_URI);
 
         db.on('error', (err) => {
-            reject(err); // reject the promise with the provided error
+            reject(err);
         });
         db.once('open', () => {
             User = db.model("User", userSchema);
@@ -65,35 +59,29 @@ let initialize = () => {
     });
 };
 
-// Function to register a new user
 let registerUser = (userData) => {
-    console.log("registerUser function called with data:", userData); // Added here
+    console.log("registerUser function called with data:", userData);
     return new Promise((resolve, reject) => {
-        // Check if passwords match
         if (userData.password !== userData.password2) {
             reject("Passwords do not match");
             return;
         }
 
-        // Encrypt user's password
         bcrypt.hash(userData.password, 10)
             .then(hash => {
-                console.log("Password hashed successfully"); // Added here
-                // Replace user's password with the hashed version
+                console.log("Password hashed successfully");
                 userData.password = hash;
 
-                // Create a new user with the provided data
                 let newUser = new User(userData);
-                console.log("New user created:", newUser); // Added here
+                console.log("New user created:", newUser);
 
-                // Save the new user to the database
                 newUser.save()
                     .then(() => {
-                        console.log("User saved successfully!"); // Added here
+                        console.log("User saved successfully!");
                         resolve("User created successfully!");
                     })
                     .catch((err) => {
-                        console.log("Error saving user:", err); // Added here
+                        console.log("Error saving user:", err);
                         if (err.code === 11000) {
                             reject("User Name already taken");
                         } else {
@@ -102,25 +90,21 @@ let registerUser = (userData) => {
                     });
             })
             .catch(err => {
-                console.log("Error hashing password:", err); // Added here
+                console.log("Error hashing password:", err);
                 reject("There was an error encrypting the password");
             });
     });
 };
 
-// Function to check user
 let checkUser = (userData) => {
     return new Promise((resolve, reject) => {
-        // Find a user with the provided userName
         User.find({ userName: userData.userName })
             .then((users) => {
-                // Check if user was found
                 if (users.length === 0) {
                     reject(`Unable to find user: ${userData.userName}`);
                     return;
                 }
 
-                // Check if password is correct
                 bcrypt.compare(userData.password, users[0].password)
                     .then(result => {
                         if (!result) {
@@ -128,13 +112,11 @@ let checkUser = (userData) => {
                             return;
                         }
 
-                        // Add the most recent entry to the login history
                         if (users[0].loginHistory.length === 8) {
                             users[0].loginHistory.pop();
                         }
                         users[0].loginHistory.unshift({ dateTime: new Date().toString(), userAgent: userData.userAgent });
 
-                        // Update user's login history
                         User.updateOne({ userName: users[0].userName }, { $set: { loginHistory: users[0].loginHistory } })
                             .then(() => {
                                 resolve(users[0]);
@@ -153,5 +135,4 @@ let checkUser = (userData) => {
     });
 };
 
-// Exporting functions
 module.exports = { User, initialize, registerUser, checkUser };
